@@ -85,24 +85,36 @@ def main():
                 desc_stats=gene_desc.stats, go_terms_replacement_dict=conf_parser.get_go_rename_terms())
             if sentences:
                 joined_sent = []
-                func_sent = " and ".join([sentence.text for sentence in sentences.get_sentences(
-                    go_aspect='F', merge_groups_with_same_prefix=True, keep_only_best_group=True,
-                    desc_stats=gene_desc.stats)])
-                if func_sent:
-                    joined_sent.append(func_sent)
-                proc_sent = " and ".join([sentence.text for sentence in sentences.get_sentences(
-                    go_aspect='P', merge_groups_with_same_prefix=True, keep_only_best_group=True,
-                    desc_stats=gene_desc.stats)])
-                if proc_sent:
-                    joined_sent.append(proc_sent)
-                comp_sent = " and ".join([sentence.text for sentence in sentences.get_sentences(
-                    go_aspect='C', merge_groups_with_same_prefix=True, keep_only_best_group=True,
-                    desc_stats=gene_desc.stats)])
-                if comp_sent:
-                    joined_sent.append(comp_sent)
+                func_sent = sentences.get_sentences(go_aspect='F', merge_groups_with_same_prefix=True,
+                                                    keep_only_best_group=True, desc_stats=gene_desc.stats)
+                proc_sent = sentences.get_sentences(go_aspect='P', merge_groups_with_same_prefix=True,
+                                                    keep_only_best_group=True, desc_stats=gene_desc.stats)
+                comp_sent = sentences.get_sentences(go_aspect='C', merge_groups_with_same_prefix=True,
+                                                    keep_only_best_group=True, desc_stats=gene_desc.stats)
+                exact_sent = []
+                predicted_sent = []
 
-                go_desc = "; ".join(joined_sent) + "."
-                gene_desc.description = go_desc.capitalize()
+                def group_sentence(sentence):
+                    if sentence:
+                        if sentence[0].prefix.startswith("predicted to"):
+                            predicted_sent.append(sentence[0].text.replace("predicted to ", ""))
+                        else:
+                            exact_sent.append(sentence[0].text)
+                group_sentence(func_sent)
+                group_sentence(proc_sent)
+                group_sentence(comp_sent)
+
+                go_desc_exact = "; ".join(exact_sent)
+                go_desc_predicted = "predicted to: " + "; ".join(predicted_sent)
+                if go_desc_exact:
+                    joined_sent.append(go_desc_exact)
+                if go_desc_predicted != "predicted to: ":
+                    joined_sent.append(go_desc_predicted)
+                go_desc = "; ".join(joined_sent)
+                if len(go_desc) > 0:
+                    gene_desc.description = go_desc[0].upper() + go_desc[1:]
+                else:
+                    gene_desc.description = "No description available"
             else:
                 gene_desc.description = "No description available"
             desc_writer.add_gene_desc(gene_desc)
